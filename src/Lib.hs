@@ -1,52 +1,119 @@
 module Lib () where
 
-import Text.Show.Functions ()
-
-doble :: Int -> Int
-doble x = x * 2
-
-data poderes = unPoder {
-    nombre :: String
-    danio :: Num
-    curacion :: Num
+data Poder = Poder {
+    nombrePoder :: String,
+    danio :: Int,
+    curacion :: Int,
     parametroExtra :: Int
 }
 
-data personaje = unPersonaje {
-    nombre :: String
-    poderBasico :: unPoder
-    superPoder :: unPoder
-    superPoderActivo :: Bool
+data Personaje = Personaje {
+    nombre :: String,
+    poderBasico :: Poder,
+    superPoder :: Poder,
+    superPoderActivo :: Bool,
     vida :: Int
 }
 
 
-unPoder bolaEspinosa = unPoder "Bola Espinosa" 1000 0 0
-unPoder lluviaDeTuercas = unPoder "Lluvia de tuercas" 0 800 0
-unPoder granadaDeEspina = unPoder "Granada de espinas" 0 0 5 
-unPoder torretaCurativa = unPoder "Torreta curativa" 0 0 0
+bolaEspinosa :: Poder
+bolaEspinosa = Poder "Bola Espinosa" 1000 0 0
 
-unPersonaje pamela = unPersonaje "Pamela" lluviaDeTuercas torretaCurativaFalse 9600
-unPersonaje espina = unPersonaje "Espina" bolaEspinosa granadaDeEspina True 4800
+lluviaDeTuercas :: Poder
+lluviaDeTuercas = Poder "Lluvia de tuercas" 0 800 0
 
-atacarPoderEspecial unPersonaje personajeColega personajeContricante
-    |unPersonaje.superPoderActivo = realizarSuperAtaque unPersonaje personajeColega personajeContricante
-    |otherwise = "Super Poder desactivado"
+tipoLluviaDeTuercas :: String
+tipoLluviaDeTuercas = "sanadoras" --"daninas"
 
-realizarSuperAtaque unPersonaje personajeColega personajeContricante
-    |unPersonaje.superPoder.nombre == "Granada de espinas" = atacarGranadaEspina unPersonaje.superPoder personajeContricante && atacarBolaEspinosa
-    |unPersonaje.superPoder.nombre == "Torreta curativa"   = atacarTorretaCurativa unPersonaje personajeColega && atacarLluviaDeTuercas
-    |otherwise = "Error"
+granadaDeEspina :: Poder
+granadaDeEspina = Poder "Granada de espinas" 0 0 5
 
-atacarGranadaEspina :: unPoder->unPersonaje->unPersonaje
-atacarGranadaEspina unPoder personajeContricante
-    |unPoder.parametroExtra > 3 && personajeContricante.vida < 800 = personajeContricante.nombre = "Espina estuvo aqui" && personajeContricante.vida = 0
-    |unPoder.parametroExtra > 3 = personajeContricante.nombre = "Espina estuvo aqui"
-    |unPoder.parametroExtra =< 3 = atacarBolaEspinosa personajeContricante
+torretaCurativa :: Poder
+torretaCurativa = Poder "Torreta curativa" 0 0 0
 
-atacarLluviaDeTuercas
+pamela :: Personaje
+pamela = Personaje "Pamela" lluviaDeTuercas torretaCurativa False 9600
 
-atacarTorretaCurativa
+espina :: Personaje
+espina = Personaje "Espina" bolaEspinosa granadaDeEspina True 4800
 
-atacarBolaEspinosa :: unPersonaje -> unPersonaje
-atacarBolaEspinosa personajeContricante = personajeContricante.vida (max 0 (personajeContricante.vida - 1000)) /* Sin terminar*/
+
+atacarConElpoderEspecial :: Personaje -> Personaje -> Personaje -> (String,Personaje,Personaje,Personaje)
+atacarConElpoderEspecial usuario aliado enemigo
+    |not (superPoderActivo usuario) = ("Super poder desactivado",usuario,aliado,enemigo)
+    |nombrePoder (superPoder usuario) == "Granada de espinas" = atacarGranadaEspina usuario aliado enemigo
+    |nombrePoder (superPoder usuario) == "Torreta curativa" = atacarTorretaCurativa usuario aliado enemigo
+    |otherwise = ("Poder desconocido",usuario,aliado,enemigo)
+
+atacarGranadaEspina :: Personaje -> Personaje -> Personaje -> (String,Personaje,Personaje,Personaje)
+atacarGranadaEspina usuario aliado enemigo
+    |parametroExtra (superPoder usuario) > 3 && vida enemigo < 800 =
+        ("Granada de espina activada",usuario,aliado,
+        Personaje
+        (nombre enemigo ++ "Espina estuvo aqui")
+        (poderBasico enemigo)
+        (superPoder enemigo)
+        False
+        0)
+    |parametroExtra (superPoder usuario) > 3 =
+        ("Granada de espina y Bola espinosa activada",usuario,aliado,
+        Personaje
+        (nombre enemigo ++ "Espina estuvo aqui")
+        (poderBasico enemigo)
+        (superPoder enemigo)
+        (superPoderActivo enemigo)
+        (max 0 $ vida enemigo-danio (poderBasico usuario)))
+    |otherwise = ("Granada de espina y Bola espinosa activada",usuario,aliado,
+        Personaje
+        (nombre enemigo)
+        (poderBasico enemigo)
+        (superPoder enemigo)
+        (superPoderActivo enemigo)
+        (max 0 $ vida enemigo-danio (poderBasico usuario)))
+
+atacarTorretaCurativa :: Personaje -> Personaje -> Personaje -> (String,Personaje,Personaje,Personaje)
+atacarTorretaCurativa usuario aliado enemigo
+    |tipoLluviaDeTuercas == "sanadoras" =
+        ("Torre Curativa y Lluvia de tuercas activado",usuario,
+        Personaje
+        (nombre aliado)
+        (poderBasico aliado)
+        (superPoder aliado)
+        True
+        (vida aliado*2 + curacion (poderBasico usuario))
+        ,enemigo)
+
+    |tipoLluviaDeTuercas == "daninas" =
+        ("Torre Curativa y Lluvia de tuercas activado",usuario,
+        Personaje
+        (nombre aliado)
+        (poderBasico aliado)
+        (superPoder aliado)
+        True
+        (vida aliado*2 + curacion (poderBasico usuario))
+        ,
+        Personaje
+        (nombre enemigo)
+        (poderBasico enemigo)
+        (superPoder enemigo)
+        (superPoderActivo enemigo)
+        (div (vida enemigo) 2)
+        )
+    |otherwise = ("Torre Curativa",usuario,
+        Personaje
+        (nombre aliado)
+        (poderBasico aliado)
+        (superPoder aliado)
+        True
+        (vida aliado*2)
+        ,enemigo)
+
+brawlers :: [Personaje]
+brawlers = [pamela,espina]
+
+quienesEstanEnLasUltimas :: [Personaje] -> [String]
+quienesEstanEnLasUltimas unosbrawlers = map nombre (filter brawlersConPocaVida unosbrawlers)
+
+brawlersConPocaVida :: Personaje -> Bool
+brawlersConPocaVida unPersonaje = vida unPersonaje <= 800
+
